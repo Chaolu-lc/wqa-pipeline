@@ -1,0 +1,42 @@
+# 地表水环境质量标准限值（GB 3838-2002）
+# 外置为配置文件：换一套标准（如河流→湖库、或换地方标准）只需替换本文件，
+# 不需要改动任何 Python 代码。这是"配置驱动"在架构中的具体体现。
+name: 地表水环境质量标准
+standard_code: GB 3838-2002
+scenario: 河流
+remark: 总磷按河流标准取值；湖库水体应将总磷限值替换为 0.01/0.025/0.05/0.1/0.2
+
+# 五档限值依次对应 I、II、III、IV、V 类
+indicators:
+  do:
+    name: 溶解氧
+    unit: mg/L
+    direction: higher # 越大越好
+    limits: [7.5, 6.0, 5.0, 3.0, 2.0]
+  cod:
+    name: 化学需氧量
+    unit: mg/L
+    direction: lower
+    limits: [15, 15, 20, 30, 40]
+  nh3n:
+    name: 氨氮
+    unit: mg/L
+    direction: lower
+    limits: [0.15, 0.5, 1.0, 1.5, 2.0]
+  tp:
+    name: 总磷
+    unit: mg/L
+    direction: lower
+    limits: [0.02, 0.1, 0.2, 0.3, 0.4]
+  tn:
+    name: 总氮
+    unit: mg/L
+    direction: lower
+    limits: [0.2, 0.5, 1.0, 1.5, 2.0]
+
+# pH 为区间型指标，不参与五档分级，单独做达标判定
+compliance_ranges:
+  ph:
+    name: pH
+    unit: 无量纲
+    range: [6.0, 9.0]

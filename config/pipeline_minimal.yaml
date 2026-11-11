@@ -1,0 +1,36 @@
+# 精简链路：只保留"加载 → 校验 → 评价 → 报表"四级
+# 用于演示「同一套引擎 + 不同编排」：改一行启动参数即可裁剪管线，无需改动任何代码
+pipeline:
+  on_error: skip
+  standard: config/water_quality_standard.yaml
+
+stages:
+  - name: loader
+    config:
+      patterns: ["data/raw/*.csv"]
+      encoding: utf-8-sig
+
+  - name: validate
+    config:
+      required_fields: [station_id, station_name, sample_time, ph, do, cod, nh3n, tp, tn]
+      numeric_fields: [water_temp, ph, do, cod, nh3n, tp, tn, turbidity]
+      time_formats:
+        - "%Y-%m-%d %H:%M:%S"
+        - "%Y/%m/%d %H:%M"
+      physical_ranges:
+        ph: [0, 14]
+        do: [0, 25]
+        cod: [0, 500]
+        nh3n: [0, 100]
+        tp: [0, 20]
+        tn: [0, 100]
+
+  - name: index
+    config:
+      standard: config/water_quality_standard.yaml
+
+  - name: report
+    config:
+      output_dir: reports_minimal
+      formats: [json, md]
+      charts: true

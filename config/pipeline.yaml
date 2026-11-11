@@ -1,0 +1,69 @@
+# ============================================================
+# 管线编排配置：这一份文件定义了整条过滤链的顺序与各阶段参数
+# 修改这里即可改变系统行为，无需改动任何代码（配置驱动）
+# ============================================================
+pipeline:
+  on_error: skip # skip: 单级失败仅隔离；abort: 立即中止
+  standard: config/water_quality_standard.yaml
+
+stages:
+  # ---- 1. 数据加载：把原始 CSV 读进内存 ----
+  - name: loader
+    config:
+      patterns:
+        - "data/raw/*.csv"
+      encoding: utf-8-sig
+
+  # ---- 2. 数据校验：类型、时间、去重、物理量程 ----
+  - name: validate
+    config:
+      required_fields: [station_id, station_name, sample_time, ph, do, cod, nh3n, tp, tn]
+      numeric_fields: [water_temp, ph, do, cod, nh3n, tp, tn, turbidity]
+      time_formats:
+        - "%Y-%m-%d %H:%M:%S"
+        - "%Y-%m-%d %H:%M"
+        - "%Y/%m/%d %H:%M"
+        - "%Y/%m/%d %H:%M:%S"
+      physical_ranges:
+        water_temp: [-5, 45]
+        ph: [0, 14]
+        do: [0, 25]
+        cod: [0, 500]
+        nh3n: [0, 100]
+        tp: [0, 20]
+        tn: [0, 100]
+        turbidity: [0, 5000]
+
+  # ---- 3. 缺失值填补：按站点分组，线性插值 ----
+  - name: missing
+    config:
+      strategy: linear # linear / mean / median / drop
+      max_fill_ratio: 0.5 # 单站单指标缺失超过 50% 视为该站数据不可用，不强行填补
+      fields: [water_temp, ph, do, cod, nh3n, tp, tn, turbidity]
+
+  # ---- 4. 异常值处理：四分位距识别，区分采集异常与真实污染事件 ----
+  - name: outlier
+    config:
+      method: iqr # sigma / iqr
+      k: 3.0 # 取 3.0 而非箱线图默认的 1.5：监测数据本身波动小，1.5 会把正常波动误判为异常
+      action: clip # clip: 截断到边界 / tag: 仅标记 / drop: 删除整行
+      corroboration: 2 # 同时越界的指标数达到该阈值，判为疑似真实污染事件并保留原值
+      fields: [cod, nh3n, tp, tn, turbidity]
+
+  # ---- 5. 水质评价：单因子类别 + 内梅罗指数 ----
+  - name: index
+    config:
+      standard: config/water_quality_standard.yaml
+
+  # ---- 6. 趋势与预警：时序斜率、连续超标告警、站点排名 ----
+  - name: trend
+    config:
+      consecutive: 6 # 约 1.5 天（4 次/日）；低于此值的偶发超标视为正常波动，不告警
+      warn_class: IV
+
+  # ---- 7. 报表输出：JSON + Markdown + 图表 ----
+  - name: report
+    config:
+      output_dir: reports
+      formats: [json, md]
+      charts: true

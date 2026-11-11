@@ -1,0 +1,9 @@
+.venv/
+.idea/
+.vscode/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+reports/
+reports_local_demo/
+reports_minimal/
